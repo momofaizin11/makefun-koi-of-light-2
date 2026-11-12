@@ -207,8 +207,11 @@ FRONT_FINS = [
     (pec2, 0.52, (255, 206, 152), (255, 242, 212)),
 ]
 
+# veil for back-fin rays / membrane where they cross the translucent body
+BACK_RAY = 0.30
 
-def draw_fin(scene, glow, fin, mul, col, hot):
+
+def draw_fin(scene, glow, fin, mul, col, hot, rm=1.0):
     lead, trail, ctr, cap = fin
     root = ctr[0]
     ang = math.atan2(ctr[-1][1] - ctr[0][1], ctr[-1][0] - ctr[0][0])
@@ -231,11 +234,11 @@ def draw_fin(scene, glow, fin, mul, col, hot):
         p1 = (cx + (lead[i][0] - trail[i][0]) * v * 0.5,
               cy + (lead[i][1] - trail[i][1]) * v * 0.5)
         segs.append(([p0, ((p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2), p1], 3))
-    rays = strokes(segs, blur=1.1) * alpha
+    rays = strokes(segs, blur=1.1) * alpha * rm
     a = alpha * geom * mul * ripple
     scene = over(scene, a, col)
     edge = np.clip(alpha - soft(alpha, 2.0), 0, 1)
-    scene = over(scene, edge * mul * 1.0, (255, 250, 234))
+    scene = over(scene, edge * mul * 1.0 * rm, (255, 250, 234))
     # finer secondary veins
     segs2 = []
     for k in range(-10, 11):
@@ -248,9 +251,9 @@ def draw_fin(scene, glow, fin, mul, col, hot):
         p1 = (cx + (lead[i][0] - trail[i][0]) * v * 0.5,
               cy + (lead[i][1] - trail[i][1]) * v * 0.5)
         segs2.append(([p0, p1], 1))
-    rays2 = strokes(segs2, blur=1.2) * alpha
+    rays2 = strokes(segs2, blur=1.2) * alpha * rm
     mixed = np.clip(a * 0.50 + rays * 0.75 + edge * 1.0, 0, 1)
-    scene = over(scene, mixed * 0.55 * mul, hot)
+    scene = over(scene, mixed * 0.55 * mul * rm, hot)
     scene = over(scene, rays2 * 0.34 * mul * geom, (255, 250, 230))
     # contact shadow so the membrane separates from the body it crosses
     sep = np.clip(soft(alpha, 5.0) - alpha, 0, 1) * body
@@ -287,7 +290,7 @@ scene = wat.copy()
 glow = np.zeros((H, W), np.float32)
 SIL = np.zeros((H, W), np.float32)
 for fin, mul, col, hot in BACK_FINS:
-    scene, glow = draw_fin(scene, glow, fin, mul, col, hot)
+    scene, glow = draw_fin(scene, glow, fin, mul, col, hot, BACK_RAY)
 
 # ---------------------------------------------------------------- body
 p = np.clip(R / np.maximum(BW, 1e-3), -1.5, 1.5)
@@ -296,12 +299,16 @@ SIL[:] = np.clip(SIL + body, 0, 1)
 scene = over(scene, soft(body, 26) * 0.55, (255, 176, 92))
 scene = over(scene, soft(body, 9) * 0.45, (255, 196, 120))
 # translucent base wash so the water reads through the body
-scene = over(scene, body * 0.62, (198, 116, 56))
+scene = over(scene, body * 0.72, (198, 116, 56))
 shade = np.clip(1.0 - np.abs(p - 0.06) / 1.00, 0, 1) ** 0.78
-scales = 0.5 + 0.5 * np.cos(US * 2 * math.pi * 26.0 + p * 2.1)
-scene = over(scene, body * shade * (0.50 + 0.08 * scales), (255, 186, 108))
+# soft, warped scale sheen: wide and uneven so the flanks never read as ribs
+warp = 1.7 * np.sin(US * 6.3 + 0.7) + 0.9 * np.sin(US * 11.0 - p * 1.3)
+scales = 0.5 + 0.5 * np.cos(US * 2 * math.pi * 13.0 + p * 2.1 + warp)
+scales = soft(scales, 2.5)
+env = 0.55 + 0.45 * np.sin(US * 2 * math.pi * 1.6 + p * 1.2) ** 2
+scene = over(scene, body * shade * (0.47 + 0.05 * (scales - 0.5) * 2.0 * env), (255, 186, 108))
 # scale glints
-scene = over(scene, body * (scales ** 7) * 0.16, (255, 244, 216))
+scene = over(scene, body * (np.clip(scales, 0, 1) ** 6) * 0.06 * env, (255, 244, 216))
 core = body * np.clip(1.0 - np.abs(p + 0.02) / 0.36, 0, 1) ** 1.15
 scene = over(scene, core * 0.62, (255, 234, 190))
 # koi pattern: patches of light along the body (kohaku-like)

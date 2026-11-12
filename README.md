@@ -1,17 +1,14 @@
 # Koi of Light
 
-A koi fish made of light, swimming through dark water.
+A koi drawn as living light, swimming through dark water: head and bright eye
+to the upper right, forked silky tail sweeping down to the lower left.
 
-The picture is 1024x1024, 8-bit RGB. A single carp hangs on the diagonal: head
-and bright eye toward the upper right, tail sweeping down to the lower left.
-Its body is translucent amber, lit from inside, with patches of brighter light
-along the flank. Soft silk fins sit on the body, the caudal fin forks and
-frays, and two thin barbels mark the mouth. Around it the water is deep
-blue-black, crossed by tilted light shafts, faint caustic ripples and a few
-ring-shaped bubbles.
+The image is 1024x1024, 8-bit RGB, and is produced by `tools/render.py`
+(numpy + Pillow, no randomness - the same frame every run). Palette: amber-gold
+body (around #FDDB9E with #EAC590 glow) against deep blue-black water, with
+pale blue caustics and a cream rim that separates the fish from the dark.
 
-`tools/render.py` is the studio that drew it: a numpy + Pillow program that
-builds the fish procedurally from a curve skeleton, then composites glow,
-water and bloom into one deterministic frame. `main.py` is the entry - it
-copies the finished `entry.png` byte for byte into `$MAKEFUN_OUTPUT_DIR`
-(default `/output`) using the standard library only.
+Regenerate the picture: `python3 tools/render.py entry.png` (also writes a
+300px twin).
+Run the entry: `MAKEFUN_OUTPUT_DIR=/somewhere python3 main.py` copies `entry.png`
+byte for byte with the standard library only (default output `/output`).
